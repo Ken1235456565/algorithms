@@ -53,8 +53,24 @@ public class TwoSumWithCalipers implements TwoSum {
      */
     public static List<Pair> calipers(int[] a, Function<Pair, Integer> function) {
         List<Pair> pairs = new ArrayList<>();
-        // TO BE IMPLEMENTED  : implement getPairs
-                throw new RuntimeException("implementation missing");
+        int i = 0;
+        int j = a.length - 1;
+
+        while (i < j) {
+            Pair pair = new Pair(a[i], a[j]);
+            int comparison = function.apply(pair);
+
+            if (comparison == 0) {
+                pairs.add(pair);
+                i++;
+                j--;
+            } else if (comparison < 0) {
+                i++;  // sum太小，左指针右移
+            } else {
+                j--;  // sum太大，右指针左移
+            }
+        }
+        return pairs;
     }
 
     private final int[] xs;

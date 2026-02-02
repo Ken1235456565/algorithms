@@ -6,6 +6,7 @@ package com.phasmidsoftware.dsaipg.misc.randomwalk;
 
 import java.util.Random;
 
+
 /**
  * The RandomWalk class simulates a two-dimensional random walk. A "drunkard"
  * moves in a random direction for a specified number of steps, and the distance
@@ -15,14 +16,39 @@ import java.util.Random;
 public class RandomWalk {
 
     /**
+     * Represents the current x-coordinate of the drunkard's position
+     * during a random walk. This value is updated whenever the
+     * drunkard moves along the x-axis.
+     */
+    /**
+     * The y-coordinate representing the drunkard's current vertical position
+     * on the 2-dimensional plane during the random walk.
+     * This field starts at the origin (value 0) and gets updated
+     * with every vertical movement of the drunkard.
+     */
+    /**
+     * A Random object used to generate random numbers for the RandomWalk class.
+     * It is utilized in determining random moves in the random walk process.
+     * This instance ensures randomness in operations such as generating random steps
+     * for the drunkard's movement in the program.
+     */
+    private int x = 0;
+    private int y = 0;
+    private final Random random;
+
+    public RandomWalk() {
+        this.random = new Random(System.nanoTime());
+    }
+    /**
      * Method to compute the distance from the origin (the lamp-post where the drunkard starts) to his current position.
      *
      * @return the (Euclidean) distance from the origin to the current position.
      */
+    // 添加构造函数
+
+
     public double distance() {
-        // TO BE IMPLEMENTED 
-         return 0.0;
-        // END SOLUTION
+         return Math.sqrt(x*x+y*y);
     }
 
     /**
@@ -32,9 +58,8 @@ public class RandomWalk {
      * @param dy the distance he moves in the y direction
      */
     private void move(int dx, int dy) {
-        // TO BE IMPLEMENTED  do move
-         throw new RuntimeException("Not implemented");
-        // END SOLUTION
+         x += dx;
+         y += dy;
     }
 
     /**
@@ -43,8 +68,9 @@ public class RandomWalk {
      * @param m the number of steps the drunkard takes
      */
     private void randomWalk(int m) {
-        // TO BE IMPLEMENTED 
-                throw new RuntimeException("implementation missing");
+        for (int i =0; i<m; i++){
+            randomMove();
+        }
     }
 
     /**
@@ -56,27 +82,6 @@ public class RandomWalk {
         int step = random.nextBoolean() ? 1 : -1;
         move(ns ? step : 0, ns ? 0 : step);
     }
-
-    /**
-     * Represents the current x-coordinate of the drunkard's position
-     * during a random walk. This value is updated whenever the
-     * drunkard moves along the x-axis.
-     */
-    private int x = 0;
-    /**
-     * The y-coordinate representing the drunkard's current vertical position
-     * on the 2-dimensional plane during the random walk.
-     * This field starts at the origin (value 0) and gets updated
-     * with every vertical movement of the drunkard.
-     */
-    private int y = 0;
-    /**
-     * A Random object used to generate random numbers for the RandomWalk class.
-     * It is utilized in determining random moves in the random walk process.
-     * This instance ensures randomness in operations such as generating random steps
-     * for the drunkard's movement in the program.
-     */
-    private final Random random = new Random();
 
     /**
      * Perform multiple random walk experiments, returning the mean distance.
@@ -106,10 +111,24 @@ public class RandomWalk {
      *             If args is empty, the method throws a RuntimeException indicating invalid syntax.
      */
     public static void main(String[] args) {
-        if (args.length == 0)
-            throw new RuntimeException("Syntax: RandomWalk steps [experiments]");
+        // not giving param
+        if (args.length == 0) {
+            // （6 tyep  steps I need to test）
+            int[] steps = {10, 50, 150, 250, 500, 1000};
+            int experiments = 20;
+            System.out.println("Steps\tMean Distance\tTheoretical (sqrt(m))");
+
+            for (int m : steps) {
+                double meanDistance = randomWalkMulti(m, experiments);
+                double theoretical = Math.sqrt(m);
+                System.out.printf("%d\t%.4f\t\t%.4f\n",
+                        m, meanDistance, theoretical);
+            }
+            return;
+        }
+        // giving a param
         int m = Integer.parseInt(args[0]);
-        int n = 30;
+        int n = 1;
         if (args.length > 1) n = Integer.parseInt(args[1]);
         double meanDistance = randomWalkMulti(m, n);
         System.out.println(m + " steps: " + meanDistance + " over " + n + " experiments");

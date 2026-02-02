@@ -43,10 +43,30 @@ public class ThreeSumQuadratic implements ThreeSum {
      * @param j the index of the middle value.
      * @return a Triple such that
      */
-     List<Triple> getTriples(int j) {
-         List<Triple> triples = new ArrayList<>();
-        // TO BE IMPLEMENTED  : for each candidate, test if a[i] + a[j] + a[k] = 0.
-                throw new RuntimeException("implementation missing");
+    List<Triple> getTriples(int j) {
+        List<Triple> triples = new ArrayList<>();
+        int i = 0;           // 左指针从最左边开始
+        int k = length - 1;  // 右指针从最右边开始
+
+        // 双指针：i 从左边，k 从右边，j 是固定的中间值
+        while (i < j && k > j) {
+            int sum = a[i] + a[j] + a[k];
+
+            if (sum == 0) {
+                // 找到一个三元组
+                triples.add(new Triple(a[i], a[j], a[k]));
+                i++;
+                k--;
+            } else if (sum < 0) {
+                // sum 太小，需要增加较小的值
+                i++;
+            } else {
+                // sum 太大，需要减少较大的值
+                k--;
+            }
+        }
+
+        return triples;
     }
 
     private final int[] a;

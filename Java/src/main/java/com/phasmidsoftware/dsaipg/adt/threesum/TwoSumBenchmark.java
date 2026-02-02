@@ -94,8 +94,17 @@ public class TwoSumBenchmark {
      */
     private void benchmarkTwoSum(final String description, final Consumer<int[]> function, int n, final TimeLogger[] timeLoggers) {
         if (n > 8000) return;
-        // TO BE IMPLEMENTED 
-                throw new RuntimeException("implementation missing");
+        Benchmark_Timer<int[]> timer = new Benchmark_Timer<>(
+                description,
+                config,
+                xs -> xs,
+                function,
+                null
+        );
+        double time = timer.runFromSupplier(supplier, runs);
+        for (TimeLogger logger : timeLoggers) {
+            logger.log(description, time, n);
+        }
     }
 
     /**
