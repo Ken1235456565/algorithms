@@ -1,7 +1,7 @@
 package com.phasmidsoftware.dsaipg.adt.threesum;
 import java.util.function.Supplier;
 
-public class ThreeSumBenchmarkRunner {
+public class ThreeSumBenchmarkMain {
     public static void main(String[] args) {
         // 设定 N 的测试值 (建议从较小的值开始，因为 Cubic 很慢)
         int[] nValues = {50, 100, 200, 400, 800, 1600, 3200, 6400, 12800};
