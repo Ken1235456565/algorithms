@@ -215,6 +215,18 @@ public class Timer {
      */
     private <T, U> int doRepeatForIteration(int n, boolean warmup, Supplier<T> supplier, Function<T, U> function, UnaryOperator<T> preFunction, Consumer<U> postFunction, int lastx, int i) {
         // TO BE IMPLEMENTED : note that the timer should be paused when this method is invoked. You may use doPrintStatus to show progress (but optional).
+        T t = supplier.get();
+        if (preFunction != null) {
+            t = preFunction.apply(t);
+        }
+        resume();
+        U u = function.apply(t);
+        pauseAndLap();
+        if (postFunction != null) {
+            postFunction.accept(u);
+        }
+        int x = (100 * i) / n;
+        lastx = doPrintStatus(lastx, x);
         // END SOLUTION
         return lastx;
     }
@@ -302,9 +314,7 @@ public class Timer {
      * @return the number of ticks for the system clock. Currently defined as nano time.
      */
     private static long getClock() {
-        // TO BE IMPLEMENTED 
-         return 0;
-        // END SOLUTION
+        return System.nanoTime();
     }
 
     static Consumer<String> progressFunction(boolean showProgress) {
@@ -320,11 +330,8 @@ public class Timer {
      * @return the corresponding number of milliseconds.
      */
     private static double toMillisecs(long ticks) {
-        // TO BE IMPLEMENTED 
-         return 0;
-        // END SOLUTION
+        return ticks / 1_000_000.0;
     }
-
     /**
      * TimerException is a custom unchecked exception used to indicate errors or invalid states
      * specifically related to operations on the Timer class.
