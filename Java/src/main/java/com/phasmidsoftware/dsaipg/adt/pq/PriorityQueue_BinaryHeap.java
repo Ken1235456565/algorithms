@@ -45,12 +45,27 @@ public class PriorityQueue_BinaryHeap<K> implements PriorityQueue<K>, Iterable<K
      *
      * @param key the element to be inserted into the priority queue
      */
+//    public void give(K key) {
+//        if (m == binHeap.length - first) m--;
+//        binHeap[++m + first - 1] = key;
+//        swimUp(m + first - 1);
+//    }
+
     public void give(K key) {
-        if (m == binHeap.length - first) m--;
+        if (m == binHeap.length - first) {
+            K evicted = binHeap[m + first - 1];
+            if (evicted != null) {
+                boolean evictedHasPriority = max
+                        ? comparator.compare(evicted, highestSpilled == null ? evicted : highestSpilled) > 0
+                        : comparator.compare(evicted, highestSpilled == null ? evicted : highestSpilled) < 0;
+                if (highestSpilled == null || evictedHasPriority)
+                    highestSpilled = evicted;
+            }
+            m--;
+        }
         binHeap[++m + first - 1] = key;
         swimUp(m + first - 1);
     }
-
     /**
      * Remove the root element from this Priority Queue and adjust the binary heap accordingly.
      * If max is true, then the result will be the maximum element, else the minimum element.
@@ -159,7 +174,21 @@ public class PriorityQueue_BinaryHeap<K> implements PriorityQueue<K>, Iterable<K
      * @param comparator a comparator for the type K
      * @param floyd      true if we use Floyd's trick (aka snake).
      */
+//    public PriorityQueue_BinaryHeap(boolean max, Object[] binHeap, int first, int m, Comparator<K> comparator, boolean floyd) {
+//        this.max = max;
+//        this.first = first;
+//        this.comparator = comparator;
+//        this.m = m;
+//        //noinspection unchecked
+//        this.binHeap = (K[]) binHeap;
+//        this.floyd = floyd;
+//    }
+
     public PriorityQueue_BinaryHeap(boolean max, Object[] binHeap, int first, int m, Comparator<K> comparator, boolean floyd) {
+        this(max, binHeap, first, m, comparator, floyd, 2); // 委托，d 默认 2
+    }
+
+    public PriorityQueue_BinaryHeap(boolean max, Object[] binHeap, int first, int m, Comparator<K> comparator, boolean floyd, int d) {
         this.max = max;
         this.first = first;
         this.comparator = comparator;
@@ -167,6 +196,7 @@ public class PriorityQueue_BinaryHeap<K> implements PriorityQueue<K>, Iterable<K
         //noinspection unchecked
         this.binHeap = (K[]) binHeap;
         this.floyd = floyd;
+        this.d = d;          // ← 新增
     }
 
     /**
@@ -178,11 +208,17 @@ public class PriorityQueue_BinaryHeap<K> implements PriorityQueue<K>, Iterable<K
      * @param comparator a comparator for the type K
      * @param floyd      true if we use Floyd's trick (aka snake).
      */
+//    public PriorityQueue_BinaryHeap(int n, int first, boolean max, Comparator<K> comparator, boolean floyd) {
+//        // NOTE that we reserve the first element of the binary heap, so the length must be n+1, not n
+//        this(max, new Object[n + first], first, 0, comparator, floyd);
+//    }
     public PriorityQueue_BinaryHeap(int n, int first, boolean max, Comparator<K> comparator, boolean floyd) {
-        // NOTE that we reserve the first element of the binary heap, so the length must be n+1, not n
-        this(max, new Object[n + first], first, 0, comparator, floyd);
+        this(max, new Object[n + first], first, 0, comparator, floyd, 2); // 加 ,2
     }
 
+    public PriorityQueue_BinaryHeap(int n, int first, boolean max, Comparator<K> comparator, boolean floyd, int d) {
+        this(max, new Object[n + first], first, 0, comparator, floyd, d);
+    }
     /**
      * Constructs a priority queue with specified capacity, type (max or min), a comparator,
      * and an option to use Floyd's heap construction algorithm.
@@ -192,9 +228,17 @@ public class PriorityQueue_BinaryHeap<K> implements PriorityQueue<K>, Iterable<K
      * @param comparator a comparator for the type K to define the priority order.
      * @param floyd      if true, Floyd's heap construction algorithm will be used.
      */
+//    public PriorityQueue_BinaryHeap(int n, boolean max, Comparator<K> comparator, boolean floyd) {
+//        // NOTE that we reserve the first element of the binary heap, so the length must be n+1, not n
+//        this(n, 1, max, comparator, floyd);
+//    }
+
     public PriorityQueue_BinaryHeap(int n, boolean max, Comparator<K> comparator, boolean floyd) {
+        this(n, 1, max, comparator, floyd, 2); // 加 ,2
+    }
+    public PriorityQueue_BinaryHeap(int n, boolean max, Comparator<K> comparator, boolean floyd, int d) {
         // NOTE that we reserve the first element of the binary heap, so the length must be n+1, not n
-        this(n, 1, max, comparator, floyd);
+        this(n, 1, max, comparator, floyd, d);
     }
 
     /**
@@ -205,11 +249,18 @@ public class PriorityQueue_BinaryHeap<K> implements PriorityQueue<K>, Iterable<K
      * @param max        whether or not this is a Maximum Priority Queue as opposed to a Minimum PQ.
      * @param comparator a comparator for the type K
      */
+//    public PriorityQueue_BinaryHeap(int n, boolean max, Comparator<K> comparator) {
+//        // NOTE that we reserve the first element of the binary heap, so the length must be n+1, not n
+//        this(n, max, comparator, false);
+//    }
     public PriorityQueue_BinaryHeap(int n, boolean max, Comparator<K> comparator) {
-        // NOTE that we reserve the first element of the binary heap, so the length must be n+1, not n
-        this(n, max, comparator, false);
+        this(n, max, comparator, false, 2); // 加 ,2
     }
 
+    public PriorityQueue_BinaryHeap(int n, boolean max, Comparator<K> comparator, int d) {
+        // NOTE that we reserve the first element of the binary heap, so the length must be n+1, not n
+        this(n, max, comparator, false, d);
+    }
     /**
      * Secondary constructor which takes only the priority queue's maximum capacity and a comparator.
      * Other parameter values: max = true; first = 0; floyd = true.
@@ -217,8 +268,14 @@ public class PriorityQueue_BinaryHeap<K> implements PriorityQueue<K>, Iterable<K
      * @param n          the desired maximum capacity.
      * @param comparator a comparator for the type K
      */
+//    public PriorityQueue_BinaryHeap(int n, Comparator<K> comparator) {
+//        this(n, 0, true, comparator, true);
+//    }
     public PriorityQueue_BinaryHeap(int n, Comparator<K> comparator) {
-        this(n, 0, true, comparator, true);
+        this(n, 0, true, comparator, true, 2); // 加 ,2
+    }
+    public PriorityQueue_BinaryHeap(int n, Comparator<K> comparator,int d) {
+        this(n, 0, true, comparator, true, d);
     }
 
     /**
@@ -238,6 +295,14 @@ public class PriorityQueue_BinaryHeap<K> implements PriorityQueue<K>, Iterable<K
         heapConstructor();
     }
 
+    public PriorityQueue_BinaryHeap(Collection<K> ks, Comparator<K> comparator, int d) {
+        this(ks.size(), comparator, d);
+        int i = 0;
+        for (K k : ks) binHeap[i++] = k;
+        m = ks.size();
+        heapConstructor();
+    }
+
     /**
      * Adjusts a subtree rooted at index k to ensure it satisfies the heap property.
      * The method reorganizes the binary heap by comparing parent and child nodes,
@@ -250,20 +315,37 @@ public class PriorityQueue_BinaryHeap<K> implements PriorityQueue<K>, Iterable<K
      *          When the predicate is satisfied, we break out of the loop.
      * @return the final position of the element originally at index k after reorganization.
      */
+//    private int doHeapify(int k, BiPredicate<Integer, Integer> p) {
+//        int i = k;
+//        while (true) {
+//            int firstChild = firstChild(i);
+//            if (!(firstChild <= m + first - 1)) break;
+//            int j = firstChild;
+//            if (j < m + first - 1 && inverted(j, j + 1)) j++;
+//            if (p.test(i, j)) break;
+//            swap(i, j);
+//            i = j;
+//        }
+//        return i;
+//    }
+
     private int doHeapify(int k, BiPredicate<Integer, Integer> p) {
         int i = k;
         while (true) {
             int firstChild = firstChild(i);
-            if (!(firstChild <= m + first - 1)) break;
+            if (firstChild > m + first - 1) break;
+            // 找 d 个子节点中优先级最高的
             int j = firstChild;
-            if (j < m + first - 1 && inverted(j, j + 1)) j++;
+            for (int c = 1; c < d; c++) {
+                int child = firstChild + c;
+                if (child <= m + first - 1 && inverted(j, child)) j = child;
+            }
             if (p.test(i, j)) break;
             swap(i, j);
             i = j;
         }
         return i;
     }
-
     /**
      * Adjusts a subtree rooted at index k to ensure it satisfies the heap property.
      * The method reorganizes the binary heap by comparing parent and child nodes,
@@ -289,18 +371,26 @@ public class PriorityQueue_BinaryHeap<K> implements PriorityQueue<K>, Iterable<K
     /**
      * Get the index of the parent of the element at index k
      */
+//    private int parent(int k) {
+//        return (k + 1 - first) / 2 + first - 1;
+//    }
+
     private int parent(int k) {
-        return (k + 1 - first) / 2 + first - 1;
+        return (k - first) / d + first;
     }
+
 
     /**
      * Get the index of the first child of the element at index k.
      * The index of the second child will be one greater than the result.
      */
-    private int firstChild(int k) {
-        return (k + 1 - first) * 2 + first - 1;
-    }
+//    private int firstChild(int k) {
+//        return (k + 1 - first) * 2 + first - 1;
+//    }
 
+    private int firstChild(int k) {
+        return (k - first) * d + 1 + first;
+    }
     /**
      * Retrieves the element at the specified position in the binary heap without removing it.
      * WARNING: this is primarily for testing -- not recommended for general use.
@@ -310,6 +400,10 @@ public class PriorityQueue_BinaryHeap<K> implements PriorityQueue<K>, Iterable<K
      */
     public K peek(int k) {
         return binHeap[k];
+    }
+
+    public K getHighestSpilled() {
+        return highestSpilled;
     }
 
     /**
@@ -370,5 +464,11 @@ public class PriorityQueue_BinaryHeap<K> implements PriorityQueue<K>, Iterable<K
      * When enabled, this optimization adjusts the binary heap to enhance performance in specific scenarios.
      */
     private final boolean floyd;
+
+    // 新增：分叉数（d=2 为二叉堆，d=4 为四叉堆）
+    private int d = 2;
+
+    // 新增：记录溢出中优先级最高的元素
+    private K highestSpilled = null;
 
 }

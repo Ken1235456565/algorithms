@@ -213,10 +213,26 @@ public class Timer {
      * @param i            the current iteration index, used for progress calculations.
      * @return the updated lastx value after status update.
      */
-    private <T, U> int doRepeatForIteration(int n, boolean warmup, Supplier<T> supplier, Function<T, U> function, UnaryOperator<T> preFunction, Consumer<U> postFunction, int lastx, int i) {
-        // TO BE IMPLEMENTED : note that the timer should be paused when this method is invoked. You may use doPrintStatus to show progress (but optional).
-        // END SOLUTION
-        return lastx;
+    private <T, U> int doRepeatForIteration(int n, boolean warmup, Supplier<T> supplier,
+                                            Function<T, U> function, UnaryOperator<T> preFunction,
+                                            Consumer<U> postFunction, int lastx, int i) {
+        // 1. 从supplier获取输入（timer已暂停）
+        T t = supplier.get();
+        // 2. 执行preFunction（不计时）
+        if (preFunction != null) t = preFunction.apply(t);
+        // 3. 恢复计时
+        resume();
+        // 4. 执行主函数（计时中）
+        U u = function.apply(t);
+        // 5. 暂停计时（pause内部已经调用了pauseAndLap，会自动lap一次）
+        // warmup时不记录lap，所以warmup时用pause()，非warmup时用pauseAndLap()
+        if (warmup) pause();
+        else pauseAndLap();
+        // 6. 执行postFunction（不计时）
+        if (postFunction != null && u != null) postFunction.accept(u);
+        // 7. 显示进度
+        int x = (int) (10.0 * i / n);
+        return doPrintStatus(lastx, x);
     }
 
     /**
@@ -302,9 +318,7 @@ public class Timer {
      * @return the number of ticks for the system clock. Currently defined as nano time.
      */
     private static long getClock() {
-        // TO BE IMPLEMENTED 
-         return 0;
-        // END SOLUTION
+        return System.nanoTime();
     }
 
     static Consumer<String> progressFunction(boolean showProgress) {
@@ -320,9 +334,7 @@ public class Timer {
      * @return the corresponding number of milliseconds.
      */
     private static double toMillisecs(long ticks) {
-        // TO BE IMPLEMENTED 
-         return 0;
-        // END SOLUTION
+        return ticks / 1_000_000.0;
     }
 
     /**

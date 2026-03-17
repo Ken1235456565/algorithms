@@ -1,125 +1,105 @@
 package com.phasmidsoftware.dsaipg.sort.par;
 
-import java.io.BufferedWriter;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStreamWriter;
+import java.io.*;
 import java.util.*;
 import java.util.concurrent.ForkJoinPool;
 
-/**
- * This code has been fleshed out by Ziyao Qiao. Thanks very much.
- * CONSIDER tidy it up a bit.
- */
 public class Main {
 
-    /**
-     * The main method serves as the entry point for the program. It processes command-line arguments,
-     * configures sorting parameters, performs parallel sorting on a random array, measures execution time,
-     * and writes the performance results to a CSV file.
-     *
-     * @param args command-line arguments used for configuring program execution.
-     */
-    public static void main(String[] args) {
-        processArgs(args);
-        System.out.println("Degree of parallelism: " + ForkJoinPool.getCommonPoolParallelism());
-        Random random = new Random();
-        int[] array = new int[2000000];
-        Collection<Long> timeList = new ArrayList<>();
-        for (int j = 50; j < 100; j++) {
-            ParSort.cutoff = 10000 * (j + 1);
-            // for (int i = 0; i < array.length; i++) array[i] = random.nextInt(10000000);
-            long time;
-            long startTime = System.currentTimeMillis();
-            for (int t = 0; t < 10; t++) {
-                for (int i = 0; i < array.length; i++) array[i] = random.nextInt(10000000);
-                ParSort.sort(array, 0, array.length);
+    static final int RUNS = 5;               // repetitions per config
+    static final int[] ARRAY_SIZES = {
+            500_000, 1_000_000, 2_000_000, 4_000_000
+    };
+
+    public static void main(String[] args) throws IOException {
+        System.out.println("Available processors : " + Runtime.getRuntime().availableProcessors());
+        System.out.println("Common pool parallelism: " + ForkJoinPool.getCommonPoolParallelism());
+
+        try (BufferedWriter bw = new BufferedWriter(
+                new OutputStreamWriter(new FileOutputStream("./src/result.csv")))) {
+
+            // CSV header
+            bw.write("scheme,arraySize,cutoff,depth,avgTimeMs\n");
+
+            // ---- Scheme 1: vary cutoff ----------------------------------------
+            int[] cutoffs = {5000, 10000, 50000, 100000, 250000, 500000};
+            for (int size : ARRAY_SIZES) {
+                for (int cutoff : cutoffs) {
+                    ParSort.cutoff = cutoff;
+                    double avg = benchmark(size, () -> {
+                        int[] arr = makeArray(size);
+                        ParSort.sort(arr, 0, arr.length);
+                    });
+                    String line = String.format("cutoff,%d,%d,N/A,%.1f%n", size, cutoff, avg);
+                    System.out.print(line);
+                    bw.write(line);
+                }
             }
-            long endTime = System.currentTimeMillis();
-            time = (endTime - startTime);
-            timeList.add(time);
 
-
-            System.out.println("cutoff：" + (ParSort.cutoff) + "\t\t10times Time:" + time + "ms");
-
-        }
-        try {
-            FileOutputStream fis = new FileOutputStream("./src/result.csv");
-            OutputStreamWriter isr = new OutputStreamWriter(fis);
-            BufferedWriter bw = new BufferedWriter(isr);
-            int j = 0;
-            for (long i : timeList) {
-                String content = (double) 10000 * (j + 1) / 2000000 + "," + (double) i / 10 + "\n";
-                j++;
-                bw.write(content);
-                bw.flush();
+            // ---- Scheme 2: vary depth (threads = 2^depth) ---------------------
+            int[] depths = {1, 2, 3, 4};   // 2, 4, 8, 16 partitions
+            for (int size : ARRAY_SIZES) {
+                for (int depth : depths) {
+                    ParSort.maxDepth = depth;
+                    double avg = benchmark(size, () -> {
+                        int[] arr = makeArray(size);
+                        ParSort.sortByDepth(arr, 0, arr.length, depth);
+                    });
+                    String line = String.format("depth,%d,N/A,%d,%.1f%n", size, depth, avg);
+                    System.out.print(line);
+                    bw.write(line);
+                }
             }
-            bw.close();
 
-        } catch (IOException e) {
-            e.printStackTrace();
+            // ---- Scheme 3: combined (cutoff=50000, vary depth) ----------------
+            ParSort.cutoff = 50_000;
+            for (int size : ARRAY_SIZES) {
+                for (int depth : depths) {
+                    double avg = benchmark(size, () -> {
+                        int[] arr = makeArray(size);
+                        ParSort.sortCombined(arr, 0, arr.length, depth);
+                    });
+                    String line = String.format("combined,%d,50000,%d,%.1f%n", size, depth, avg);
+                    System.out.print(line);
+                    bw.write(line);
+                }
+            }
+
+            // ---- Baseline: Arrays.sort (single-threaded) ----------------------
+            for (int size : ARRAY_SIZES) {
+                double avg = benchmark(size, () -> {
+                    int[] arr = makeArray(size);
+                    Arrays.sort(arr);
+                });
+                String line = String.format("baseline,%d,N/A,N/A,%.1f%n", size, avg);
+                System.out.print(line);
+                bw.write(line);
+            }
         }
+        System.out.println("Done. Results written to ./src/result.csv");
     }
 
-    /**
-     * Processes the command-line arguments by iterating through the provided array of arguments.
-     * Each argument is checked for specific prefixes (e.g., "-" symbols), and arguments with such prefixes
-     * are further handled using {@link #processArg(String[])}. The method continuously modifies the arguments array
-     * by removing processed elements.
-     *
-     * @param args an array of strings representing command-line arguments to be processed.
-     *             Each argument can include options, flags, or parameters that configure the program's behavior.
-     */
-    private static void processArgs(String[] args) {
-        String[] xs = args;
-        while (xs.length > 0)
-            if (xs[0].startsWith("-")) xs = processArg(xs);
+    // -----------------------------------------------------------------------
+    // Helpers
+    // -----------------------------------------------------------------------
+
+    static final Random RNG = new Random(42);
+
+    static int[] makeArray(int size) {
+        int[] arr = new int[size];
+        for (int i = 0; i < size; i++) arr[i] = RNG.nextInt(10_000_000);
+        return arr;
     }
 
-    /**
-     * Processes a given array of strings, extracting a subset of elements and applying a command
-     * processing operation on the first two elements of the input array.
-     *
-     * @param xs the input array of strings where the first two elements are used for command processing
-     *           and the remaining elements are returned as the result.
-     * @return an array of strings containing the elements of the input array excluding the first two.
-     */
-    private static String[] processArg(String[] xs) {
-        String[] result = new String[0];
-        System.arraycopy(xs, 2, result, 0, xs.length - 2);
-        processCommand(xs[0], xs[1]);
-        return result;
+    /** Runs task RUNS times, discards first run (warm-up), returns average ms. */
+    static double benchmark(int size, Runnable task) {
+        long total = 0;
+        for (int i = 0; i < RUNS; i++) {
+            long t0 = System.currentTimeMillis();
+            task.run();
+            long t1 = System.currentTimeMillis();
+            if (i > 0) total += (t1 - t0);   // skip warm-up
+        }
+        return (double) total / (RUNS - 1);
     }
-
-    /**
-     * Processes a command and performs an associated action based on the given inputs.
-     *
-     * @param x the command identifier, which specifies the operation to perform.
-     *          Supported values: "N" for setting configuration and "P" for retrieving
-     *          the common pool parallelism level.
-     * @param y the value associated with the command. For "N", this represents the
-     *          configuration value to be set.
-     */
-    private static void processCommand(String x, String y) {
-        if (x.equalsIgnoreCase("N")) setConfig(x, Integer.parseInt(y));
-        else
-            // TODO sort this out
-            if (x.equalsIgnoreCase("P")) //noinspection ResultOfMethodCallIgnored
-                ForkJoinPool.getCommonPoolParallelism();
-    }
-
-    /**
-     * Configures a key-value pair in the application's configuration.
-     * This method stores the specified key and associated integer value
-     * into the configuration map.
-     *
-     * @param x the key to be stored in the configuration
-     * @param i the integer value to be associated with the specified key
-     */
-    private static void setConfig(String x, int i) {
-        configuration.put(x, i);
-    }
-
-    @SuppressWarnings("MismatchedQueryAndUpdateOfCollection")
-    private static final Map<String, Integer> configuration = new HashMap<>();
 }

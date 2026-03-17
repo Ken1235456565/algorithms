@@ -23,6 +23,8 @@ final class ParSort {
      */
     public static int cutoff = 1000;
 
+    public static int maxDepth = 3;
+
     /**
      * Sorts the specified portion of the input array using a parallel sorting algorithm.
      * If the range to be sorted is smaller than a predefined cutoff value, the method
@@ -34,19 +36,55 @@ final class ParSort {
      * @param from  the starting index (inclusive) of the portion of the array to be sorted
      * @param to    the ending index (exclusive) of the portion of the array to be sorted
      */
+
     public static void sort(int[] array, int from, int to) {
         if (to - from >= cutoff) {
-            CompletableFuture<int[]> completableFuture1 = null;
-            CompletableFuture<int[]> completableFuture2 = null;
-            // TO BE IMPLEMENTED 
-            // END SOLUTION
-            CompletableFuture<int[]> completableFuture = completableFuture1.thenCombine(completableFuture2, ParSort::doMerge);
-            completableFuture.whenComplete((result, throwable) -> System.arraycopy(result, 0, array, from, result.length));
+            int mid = from + (to - from) / 2;
+
+            CompletableFuture<int[]> completableFuture1 = asyncSort(array, from, mid);
+            CompletableFuture<int[]> completableFuture2 = asyncSort(array, mid,  to);
+
+            CompletableFuture<int[]> completableFuture =
+                    completableFuture1.thenCombine(completableFuture2, ParSort::doMerge);
+            completableFuture.whenComplete(
+                    (result, throwable) -> System.arraycopy(result, 0, array, from, result.length));
             completableFuture.join();
-        } else
+        } else {
             Arrays.sort(array, from, to);
+        }
     }
 
+    public static void sortByDepth(int[] array, int from, int to, int depth) {
+        if (depth > 0 && (to - from) > 1) {
+            int mid = from + (to - from) / 2;
+            CompletableFuture<int[]> cf1 = CompletableFuture.supplyAsync(
+                    () -> sortRecursiveByDepth(array, from, mid, depth - 1));
+            CompletableFuture<int[]> cf2 = CompletableFuture.supplyAsync(
+                    () -> sortRecursiveByDepth(array, mid, to, depth - 1));
+            CompletableFuture<int[]> cf = cf1.thenCombine(cf2, ParSort::doMerge);
+            cf.whenComplete((result, throwable) ->
+                    System.arraycopy(result, 0, array, from, result.length));
+            cf.join();
+        } else {
+            Arrays.sort(array, from, to);
+        }
+    }
+
+    public static void sortCombined(int[] array, int from, int to, int depth) {
+        if (depth > 0 && (to - from) >= cutoff) {
+            int mid = from + (to - from) / 2;
+            CompletableFuture<int[]> cf1 = CompletableFuture.supplyAsync(
+                    () -> sortRecursiveCombined(array, from, mid, depth - 1));
+            CompletableFuture<int[]> cf2 = CompletableFuture.supplyAsync(
+                    () -> sortRecursiveCombined(array, mid, to, depth - 1));
+            CompletableFuture<int[]> cf = cf1.thenCombine(cf2, ParSort::doMerge);
+            cf.whenComplete((result, throwable) ->
+                    System.arraycopy(result, 0, array, from, result.length));
+            cf.join();
+        } else {
+            Arrays.sort(array, from, to);
+        }
+    }
     /**
      * Recursively sorts a specified portion of the input array and returns a new sorted array.
      * This method extracts the specified range, sorts it using a defined sorting mechanism,
@@ -57,13 +95,57 @@ final class ParSort {
      * @param to    the ending index (exclusive) of the portion of the array to be sorted
      * @return a new sorted array containing the elements from the specified range of the input array
      */
+
     static int[] sortRecursive(int[] array, int from, int to) {
         int[] result = new int[to - from];
-        // TO BE IMPLEMENTED 
-         // NOTE you need to do something here so that result is the sorted version of array.
-        // END SOLUTION
-        return result;
+        System.arraycopy(array, from, result, 0, result.length);
+
+        if (result.length >= cutoff) {
+            int mid = result.length / 2;
+            CompletableFuture<int[]> cf1 =
+                    CompletableFuture.supplyAsync(() -> sortRecursive(result, 0,   mid));
+            CompletableFuture<int[]> cf2 =
+                    CompletableFuture.supplyAsync(() -> sortRecursive(result, mid, result.length));
+            return cf1.thenCombine(cf2, ParSort::doMerge).join();
+        } else {
+            Arrays.sort(result);
+            return result;
+        }
     }
+
+
+    static int[] sortRecursiveByDepth(int[] array, int from, int to, int depth) {
+        final int[] copy = new int[to - from];
+        System.arraycopy(array, from, copy, 0, to - from);
+        if (depth > 0 && copy.length > 1) {
+            int mid = copy.length / 2;
+            CompletableFuture<int[]> cf1 = CompletableFuture.supplyAsync(
+                    () -> sortRecursiveByDepth(copy, 0, mid, depth - 1));
+            CompletableFuture<int[]> cf2 = CompletableFuture.supplyAsync(
+                    () -> sortRecursiveByDepth(copy, mid, copy.length, depth - 1));
+            return cf1.thenCombine(cf2, ParSort::doMerge).join();
+        } else {
+            Arrays.sort(copy);
+            return copy;
+        }
+    }
+
+    static int[] sortRecursiveCombined(int[] array, int from, int to, int depth) {
+        final int[] copy = new int[to - from];
+        System.arraycopy(array, from, copy, 0, to - from);
+        if (depth > 0 && copy.length >= cutoff) {
+            int mid = copy.length / 2;
+            CompletableFuture<int[]> cf1 = CompletableFuture.supplyAsync(
+                    () -> sortRecursiveCombined(copy, 0, mid, depth - 1));
+            CompletableFuture<int[]> cf2 = CompletableFuture.supplyAsync(
+                    () -> sortRecursiveCombined(copy, mid, copy.length, depth - 1));
+            return cf1.thenCombine(cf2, ParSort::doMerge).join();
+        } else {
+            Arrays.sort(copy);
+            return copy;
+        }
+    }
+
 
     /**
      * Merges two sorted arrays into a single sorted array.
